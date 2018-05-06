@@ -1,0 +1,145 @@
+---
+title: "Reproducible-research-Stormdata analysis"
+author: "Santhanam R"
+date : May/4/2018
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Title: Project to explore storm data and analyze fatalities, injuries  and property damage
+
+## Synopsis:
+Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries, and property damage, and preventing such outcomes to the extent possible is a key concern.
+
+This project involves exploring the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.
+
+The basic goal of this assignment is to explore the NOAA Storm Database and answer some basic questions about severe weather events. You must use the database to answer the questions below and show the code for your entire analysis. Your analysis can consist of tables, figures, or other summaries. You may use any R package you want to support your analysis.
+
+Data analysis must address the following questions:
+1. Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+2. Across the United States, which types of events have the greatest economic consequences?
+
+After analysis the data the final analysis indicates that
+1.Tornados cause the most injuries and fatalities.
+2.Flooding causes the most economic damage.
+
+## Data Processing:
+
+#Download the storm data set and load into R
+
+```{r,cache=TRUE}
+ stormdataFileName <- "C:\\santhanam\\DatascienceToolkit\\sanrepository\\RepData_PeerAssessment2\\repdata-data-StormData.csv.bz2"
+ 
+ if (!file.exists(stormdataFileName))
+{
+  stormdataurl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+  download.file(url = stormdataurl, destfile = stormdataFileName)
+}
+allstormData <- read.csv(bzfile("repdata-data-StormData.csv.bz2"))
+
+```
+
+#Code to Compile data on fatalities ,grouping by event type and take  5 events with most fatlities
+
+``` {r}
+typefatalityData <- (subset(allstormData, FATALITIES > 0))[c(8, 23)]
+fatalityGrouped <- aggregate(FATALITIES ~ EVTYPE, data = typefatalityData, FUN = "sum", na.rm = TRUE)
+fatalityGrouped <- fatalityGrouped[order(fatalityGrouped$FATALITIES, decreasing=TRUE), ]
+fatalityGrouped <- fatalityGrouped[1:5, ]
+fatalityGrouped$EVTYPE <- factor(fatalityGrouped$EVTYPE, levels=fatalityGrouped$EVTYPE)
+
+```
+#Code to analyze data on injuries and group by top 5 injury types.
+
+```{r}
+
+injuryData <- (subset(allstormData, INJURIES > 0))[c(8, 24)]
+injuryGroupedData <- aggregate(INJURIES ~ EVTYPE, data = injuryData, FUN = "sum", na.rm = TRUE)
+injuryGroupedData <- injuryGroupedData[order(injuryGroupedData$INJURIES, decreasing=TRUE), ]
+injuryGroupedData <- injuryGroupedData[1:5, ]
+injuryGroupedData$EVTYPE <- factor(injuryGroupedData$EVTYPE, levels=injuryGroupedData$EVTYPE)
+
+```
+#Compile data on damages. combine all type of damages and also function to map the values.
+
+```{r}
+
+returndamageAmount <- function(amount, magnitude)
+{
+  returnAmount <- 0
+  if (toupper(magnitude)[1]=="K")
+  {
+    returnAmount <- (amount * 1000)
+  }
+  if (toupper(magnitude)[1]=="M")
+  {
+    returnAmount <- (amount * 1000000)
+  }
+  if (toupper(magnitude)[1]=="B")
+  {
+    returnAmount <- (amount * 1000000000)
+  }
+  return(returnAmount)
+}
+
+damageData <- (subset(allstormData, PROPDMG > 0 | CROPDMG > 0))[c(8, 25, 26, 27, 28)]
+damageData$DamageAmount <- ((mapply(returndamageAmount, damageData$PROPDMG, damageData$PROPDMGEXP)) +
+                                  (mapply(returndamageAmount, damageData$CROPDMG, damageData$CROPDMGEXP)))
+                          
+damageGroupedData <- aggregate(DamageAmount ~ EVTYPE, data = damageData, FUN = "sum", na.rm = TRUE)
+damageGroupedData <- damageGroupedData[order(damageGroupedData$DamageAmount, decreasing=TRUE), ]
+damageGroupedData <- damageGroupedData[1:5, ]
+damageGroupedData$EVTYPE <- factor(damageGroupedData$EVTYPE, levels=damageGroupedData$EVTYPE)
+
+```
+
+## Results:
+
+Plot for Fatalities:
+
+```{r}
+
+library(ggplot2)
+ggplot(fatalityGrouped, aes(x=EVTYPE, y=FATALITIES)) +
+  geom_bar(stat="identity") +
+  xlab("Event Types") + 
+  ylab("Fatalities") +
+  ggtitle("Total Fatalities Categorized by Weather Events")
+
+
+```
+
+
+Plot for Damages:
+
+
+```{r}
+library(ggplot2)
+ggplot(damageGroupedData, aes(x=EVTYPE, y=DamageAmount)) +
+  geom_bar(stat="identity") +
+  xlab("Event Types") + 
+  ylab("Damage Amount (In Dollars)") +
+  ggtitle("Total Damage Amount categorized by Weather Events")
+
+
+```
+
+Plot for Injuries:
+
+```{r}
+
+library(ggplot2)
+ggplot(injuryGroupedData, aes(x=EVTYPE, y=INJURIES)) +
+  geom_bar(stat="identity") +
+  xlab("Event Types") + 
+  ylab("Injuries") +
+  ggtitle("Total Injuries By Weather Events")
+
+```
+
+The findings based on the analysis are:
+1.Tornados cause the most injuries and fatalities.
+2.Flooding causes the most economic damage.
